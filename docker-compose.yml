@@ -1,0 +1,82 @@
+version: "3.7"
+services:
+  app:
+    build:
+      args:
+        user: tienkhach19
+        uid: 1000
+      context: ./
+      dockerfile: Dockerfile
+    image: demo
+    container_name: demo-app
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+    networks:
+      - demo
+
+  worker:
+    build:
+      args:
+        user: tienkhach19
+        uid: 1000
+      context: ./
+      dockerfile: Dockerfile
+    image: demo
+    container_name: demo-worker
+    restart: unless-stopped
+    working_dir: /var/www/
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/supervisord:/etc/supervisor
+    command:
+      - /bin/sh
+      - -c
+      - supervisord -c /etc/supervisor/supervisord.conf
+      - supervisorctl start all
+    networks:
+      - demo
+
+  db:
+    image: mariadb
+    container_name: demo-db
+    restart: unless-stopped
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: demo
+      MYSQL_ROOT_PASSWORD: binhphan2k
+      MYSQL_PASSWORD: binhphan2k
+      MYSQL_USER: tienkhach19
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    networks:
+      - demo
+
+  redis:
+    image: redis:alpine
+    container_name: demo-redis
+    command: redis-server --appendonly yes --requirepass "binhphan2k"
+    volumes:
+      - ./data/redis:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - demo
+    
+  nginx:
+    image: nginx:alpine
+    container_name: demo-nginx
+    restart: unless-stopped
+    ports:
+      - 8000:80
+    volumes:
+      - ./:/var/www
+      - ./docker-compose/nginx:/etc/nginx/conf.d/
+    networks:
+      - demo
+
+networks:
+  demo:
+    driver: bridge
